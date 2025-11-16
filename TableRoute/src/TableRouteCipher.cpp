@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
-#include <cctype> // Для toupper
+#include <cctype>
 
 // Конструктор
 TableRouteCipher::TableRouteCipher(int key)
@@ -15,14 +15,19 @@ TableRouteCipher::TableRouteCipher(int key)
 std::string TableRouteCipher::encrypt(const std::string& text)
 {
     std::string validText = getValidText(text);
-    int original_length = validText.size();
-    int rows = (original_length + columns - 1) / columns;
-    int total_cells = rows * columns;
+    
+    // Проверка что текст БОЛЬШЕ ключа (количества столбцов)
+    if (validText.length() <= columns) {
+        throw cipher_error("Длина текста должна быть больше ключа (количества столбцов)");
+    }
+    
+    size_t original_length = validText.size();
+    size_t rows = (original_length + columns - 1) / columns;
 
     std::vector<std::vector<char>> table(rows, std::vector<char>(columns, ' '));
-    int index = 0;
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < columns; j++) {
+    size_t index = 0;
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < columns; j++) {
             if (index < original_length) {
                 table[i][j] = validText[index++];
             }
@@ -30,10 +35,10 @@ std::string TableRouteCipher::encrypt(const std::string& text)
     }
 
     std::string result;
-    for (int j = columns - 1; j >= 0; j--) {
-        for (int i = 0; i < rows; i++) {
-            if (table[i][j] != ' ') {
-                result += table[i][j];
+    for (size_t j = columns; j > 0; j--) {
+        for (size_t i = 0; i < rows; i++) {
+            if (table[i][j-1] != ' ') {
+                result += table[i][j-1];
             }
         }
     }
@@ -44,16 +49,22 @@ std::string TableRouteCipher::encrypt(const std::string& text)
 std::string TableRouteCipher::decrypt(const std::string& text)
 {
     std::string validText = getValidText(text);
-    int encrypted_length = validText.size();
-    int rows = (encrypted_length + columns - 1) / columns;
+    
+    // Проверка что текст БОЛЬШЕ ключа (количества столбцов)
+    if (validText.length() <= columns) {
+        throw cipher_error("Длина текста должна быть больше ключа (количества столбцов)");
+    }
+    
+    size_t encrypted_length = validText.size();
+    size_t rows = (encrypted_length + columns - 1) / columns;
 
-    int original_length = encrypted_length;
+    size_t original_length = encrypted_length;
     std::vector<std::vector<char>> table(rows, std::vector<char>(columns, ' '));
     std::vector<std::vector<bool>> filled(rows, std::vector<bool>(columns, false));
 
-    int original_index = 0;
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < columns; j++) {
+    size_t original_index = 0;
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < columns; j++) {
             if (original_index < original_length) {
                 filled[i][j] = true;
                 original_index++;
@@ -61,18 +72,18 @@ std::string TableRouteCipher::decrypt(const std::string& text)
         }
     }
 
-    int encrypted_index = 0;
-    for (int j = columns - 1; j >= 0; j--) {
-        for (int i = 0; i < rows; i++) {
-            if (filled[i][j] && encrypted_index < encrypted_length) {
-                table[i][j] = validText[encrypted_index++];
+    size_t encrypted_index = 0;
+    for (size_t j = columns; j > 0; j--) {
+        for (size_t i = 0; i < rows; i++) {
+            if (filled[i][j-1] && encrypted_index < encrypted_length) {
+                table[i][j-1] = validText[encrypted_index++];
             }
         }
     }
 
     std::string result;
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < columns; j++) {
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < columns; j++) {
             if (filled[i][j]) {
                 result += table[i][j];
             }
@@ -82,19 +93,19 @@ std::string TableRouteCipher::decrypt(const std::string& text)
 }
 
 // Валидация ключа
-int TableRouteCipher::getValidKey(int key)
+size_t TableRouteCipher::getValidKey(int key)
 {
     if (key <= 0) {
-        throw std::invalid_argument("Ключ должен быть положительным");
+        throw cipher_error("Ключ должен быть положительным");
     }
-    return key;
+    return static_cast<size_t>(key);
 }
 
 // Валидация текста
 std::string TableRouteCipher::getValidText(const std::string& text)
 {
     if (text.empty()) {
-        throw std::invalid_argument("Текст пуст");
+        throw cipher_error("Текст пуст");
     }
     std::string result;
     for (char c : text) {
@@ -103,7 +114,7 @@ std::string TableRouteCipher::getValidText(const std::string& text)
         }
     }
     if (result.empty()) {
-        throw std::invalid_argument("Текст не содержит букв");
+        throw cipher_error("Текст не содержит букв");
     }
     return result;
 }
